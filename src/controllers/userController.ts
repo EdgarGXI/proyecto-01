@@ -6,7 +6,7 @@ import { Reservation } from '../models/Reservation';
 import { CreateUserDto, UpdateUserDto, LoginUserDto } from '../types/userTypes';
 
 // Crear un nuevo usuario
-export const createUser = async (req: Request, res: Response) => {
+export const createUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const userData: CreateUserDto = req.body;
     
@@ -17,27 +17,29 @@ export const createUser = async (req: Request, res: Response) => {
     
     // No devolver la contraseña
     const userResponse = user.toObject();
-    delete userResponse.password;
+    // Use type assertion to tell TypeScript it's safe to delete this property
+    delete (userResponse as any).password;
     
-    return res.status(201).json({
+    res.status(201).json({
       message: 'User created successfully',
       user: userResponse
     });
   } catch (error: any) {
     if (error.code === 11000) { // Error de duplicado en MongoDB
-      return res.status(400).json({
+      res.status(400).json({
         message: 'Email or ID already exists',
       });
+    } else {
+      res.status(500).json({
+        message: 'Error creating user',
+        error: error.message
+      });
     }
-    return res.status(500).json({
-      message: 'Error creating user',
-      error: error.message
-    });
   }
 };
 
 // Login de usuario
-export const loginUser = async (req: Request, res: Response) => {
+export const loginUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password }: LoginUserDto = req.body;
     
@@ -45,14 +47,16 @@ export const loginUser = async (req: Request, res: Response) => {
     const user = await User.findOne({ email, disabled: false });
     
     if (!user) {
-      return res.status(401).json({ message: 'Invalid email or password' });
+      res.status(401).json({ message: 'Invalid email or password' });
+      return;
     }
     
     // Verificar contraseña
     const validPassword = await argon2.verify(user.password, password);
     
     if (!validPassword) {
-      return res.status(401).json({ message: 'Invalid email or password' });
+      res.status(401).json({ message: 'Invalid email or password' });
+      return;
     }
     
     // Crear token JWT
@@ -67,16 +71,16 @@ export const loginUser = async (req: Request, res: Response) => {
     
     // No devolver la contraseña
     const userResponse = user.toObject();
-    delete userResponse.password;
+    delete (userResponse as any).password;
     
-    return res.status(200).json({
+    res.status(200).json({
       message: 'Login successful',
       token,
       user: userResponse,
       reservationHistory: reservations
     });
   } catch (error: any) {
-    return res.status(500).json({
+    res.status(500).json({
       message: 'Error during login',
       error: error.message
     });
@@ -84,7 +88,7 @@ export const loginUser = async (req: Request, res: Response) => {
 };
 
 // Actualizar usuario
-export const updateUser = async (req: Request, res: Response) => {
+export const updateUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.params.userId;
     const updateData: UpdateUserDto = req.body;
@@ -101,15 +105,16 @@ export const updateUser = async (req: Request, res: Response) => {
     ).select('-password');
     
     if (!updatedUser) {
-      return res.status(404).json({ message: 'User not found' });
+      res.status(404).json({ message: 'User not found' });
+      return;
     }
     
-    return res.status(200).json({
+    res.status(200).json({
       message: 'User updated successfully',
       user: updatedUser
     });
   } catch (error: any) {
-    return res.status(500).json({
+    res.status(500).json({
       message: 'Error updating user',
       error: error.message
     });
@@ -117,7 +122,7 @@ export const updateUser = async (req: Request, res: Response) => {
 };
 
 // Desactivar usuario (soft delete)
-export const disableUser = async (req: Request, res: Response) => {
+export const disableUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.params.userId;
     
@@ -128,14 +133,15 @@ export const disableUser = async (req: Request, res: Response) => {
     );
     
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      res.status(404).json({ message: 'User not found' });
+      return;
     }
     
-    return res.status(200).json({
+    res.status(200).json({
       message: 'User disabled successfully'
     });
   } catch (error: any) {
-    return res.status(500).json({
+    res.status(500).json({
       message: 'Error disabling user',
       error: error.message
     });

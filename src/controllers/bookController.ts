@@ -5,17 +5,17 @@ import { CreateBookDto, UpdateBookDto, BookQuery } from '../types/bookTypes';
 import { CreateReservationDto } from '../types/reservationTypes';
 
 // Crear un nuevo libro
-export const createBook = async (req: Request, res: Response) => {
+export const createBook = async (req: Request, res: Response): Promise<void> => {
   try {
     const bookData: CreateBookDto = req.body;
     const book = await Book.create(bookData);
     
-    return res.status(201).json({
+    res.status(201).json({
       message: 'Book created successfully',
       book
     });
   } catch (error: any) {
-    return res.status(500).json({
+    res.status(500).json({
       message: 'Error creating book',
       error: error.message
     });
@@ -23,23 +23,23 @@ export const createBook = async (req: Request, res: Response) => {
 };
 
 // Buscar libros con filtros
-export const searchBooks = async (req: Request, res: Response) => {
+export const searchBooks = async (req: Request, res: Response): Promise<void> => {
   try {
     const query: BookQuery = { ...req.query, disabled: false };
     
     // Convertir la fecha de publicación a Date si existe
     if (query.pubDate) {
-      query.pubDate = new Date(query.pubDate);
+      query.pubDate = new Date(query.pubDate as string);
     }
     
     const books = await Book.find(query);
     
-    return res.status(200).json({
+    res.status(200).json({
       message: 'Books found',
       results: books
     });
   } catch (error: any) {
-    return res.status(500).json({
+    res.status(500).json({
       message: 'Error searching books',
       error: error.message
     });
@@ -47,19 +47,20 @@ export const searchBooks = async (req: Request, res: Response) => {
 };
 
 // Buscar un libro por ID
-export const getBookById = async (req: Request, res: Response) => {
+export const getBookById = async (req: Request, res: Response): Promise<void> => {
   try {
     const bookId = req.params.bookId;
     const book = await Book.findOne({ _id: bookId, disabled: false });
     
     if (!book) {
-      return res.status(404).json({ message: 'Book not found' });
+      res.status(404).json({ message: 'Book not found' });
+      return;
     }
     
     // Obtener historial de reservas para este libro
     const reservationHistory = await Reservation.find({ bookId });
     
-    return res.status(200).json({
+    res.status(200).json({
       message: 'Book found',
       results: {
         book,
@@ -67,7 +68,7 @@ export const getBookById = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    return res.status(500).json({
+    res.status(500).json({
       message: 'Error finding book',
       error: error.message
     });
@@ -75,7 +76,7 @@ export const getBookById = async (req: Request, res: Response) => {
 };
 
 // Actualizar libro
-export const updateBook = async (req: Request, res: Response) => {
+export const updateBook = async (req: Request, res: Response): Promise<void> => {
   try {
     const bookId = req.params.bookId;
     const updateData: UpdateBookDto = req.body;
@@ -87,15 +88,16 @@ export const updateBook = async (req: Request, res: Response) => {
     );
     
     if (!updatedBook) {
-      return res.status(404).json({ message: 'Book not found' });
+      res.status(404).json({ message: 'Book not found' });
+      return;
     }
     
-    return res.status(200).json({
+    res.status(200).json({
       message: 'Book updated successfully',
       book: updatedBook
     });
   } catch (error: any) {
-    return res.status(500).json({
+    res.status(500).json({
       message: 'Error updating book',
       error: error.message
     });
@@ -103,7 +105,7 @@ export const updateBook = async (req: Request, res: Response) => {
 };
 
 // Reservar libro
-export const reserveBook = async (req: Request, res: Response) => {
+export const reserveBook = async (req: Request, res: Response): Promise<void> => {
   try {
     const bookId = req.params.bookId;
     const userId = req.user?._id;
@@ -112,11 +114,13 @@ export const reserveBook = async (req: Request, res: Response) => {
     const book = await Book.findOne({ _id: bookId, disabled: false });
     
     if (!book) {
-      return res.status(404).json({ message: 'Book not found' });
+      res.status(404).json({ message: 'Book not found' });
+      return;
     }
     
     if (book.reserved) {
-      return res.status(400).json({ message: 'Book is already reserved' });
+      res.status(400).json({ message: 'Book is already reserved' });
+      return;
     }
     
     // Actualizar libro a reservado
@@ -134,13 +138,13 @@ export const reserveBook = async (req: Request, res: Response) => {
     
     const newReservation = await Reservation.create(reservationData);
     
-    return res.status(200).json({
+    res.status(200).json({
       message: 'Book reserved successfully',
       updatedBook,
       newReservation
     });
   } catch (error: any) {
-    return res.status(500).json({
+    res.status(500).json({
       message: 'Error reserving book',
       error: error.message
     });
@@ -148,7 +152,7 @@ export const reserveBook = async (req: Request, res: Response) => {
 };
 
 // Devolver libro
-export const returnBook = async (req: Request, res: Response) => {
+export const returnBook = async (req: Request, res: Response): Promise<void> => {
   try {
     const bookId = req.params.bookId;
     const userId = req.user?._id;
@@ -157,11 +161,13 @@ export const returnBook = async (req: Request, res: Response) => {
     const book = await Book.findOne({ _id: bookId, disabled: false });
     
     if (!book) {
-      return res.status(404).json({ message: 'Book not found' });
+      res.status(404).json({ message: 'Book not found' });
+      return;
     }
     
     if (!book.reserved) {
-      return res.status(400).json({ message: 'Book is not reserved' });
+      res.status(400).json({ message: 'Book is not reserved' });
+      return;
     }
     
     // Actualizar registro de reserva
@@ -172,7 +178,8 @@ export const returnBook = async (req: Request, res: Response) => {
     );
     
     if (!updatedReservation) {
-      return res.status(404).json({ message: 'No active reservation found for this book and user' });
+      res.status(404).json({ message: 'No active reservation found for this book and user' });
+      return;
     }
     
     // Actualizar libro a no reservado
@@ -182,13 +189,13 @@ export const returnBook = async (req: Request, res: Response) => {
       { new: true }
     );
     
-    return res.status(200).json({
+    res.status(200).json({
       message: 'Book returned successfully',
       updatedBook,
       updatedReservation
     });
   } catch (error: any) {
-    return res.status(500).json({
+    res.status(500).json({
       message: 'Error returning book',
       error: error.message
     });
@@ -196,7 +203,7 @@ export const returnBook = async (req: Request, res: Response) => {
 };
 
 // Desactivar libro (soft delete)
-export const disableBook = async (req: Request, res: Response) => {
+export const disableBook = async (req: Request, res: Response): Promise<void> => {
   try {
     const bookId = req.params.bookId;
     
@@ -207,14 +214,15 @@ export const disableBook = async (req: Request, res: Response) => {
     );
     
     if (!book) {
-      return res.status(404).json({ message: 'Book not found' });
+      res.status(404).json({ message: 'Book not found' });
+      return;
     }
     
-    return res.status(200).json({
+    res.status(200).json({
       message: 'Book disabled successfully'
     });
   } catch (error: any) {
-    return res.status(500).json({
+    res.status(500).json({
       message: 'Error disabling book',
       error: error.message
     });
